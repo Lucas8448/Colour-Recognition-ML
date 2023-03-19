@@ -7,11 +7,12 @@
     "build": "vite build",
     "preview": "vite preview"
   },
-  "dependencies": {
-    "vue": "^3.2.47"
-  },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.0.0",
     "vite": "^4.1.4"
+  },
+  "dependencies": {
+    "brain-js": "^0.1.2",
+    "brain.js": "^2.0.0-beta.18"
   }
 }

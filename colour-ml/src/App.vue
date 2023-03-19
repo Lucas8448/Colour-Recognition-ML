@@ -1,47 +1,122 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+  <div id="app">
+    <h1>Color Learner</h1>
+    <video ref="video" autoplay playsinline></video>
+    <div>
+      <label for="color-name">Name:</label>
+      <input id="color-name" type="text" v-model="colorName" />
     </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+    <button @click="capture">Capture Color</button>
+    <button @click="train">Train Neural Network</button>
+    <div v-if="prediction">Predicted Color: {{ prediction }}</div>
+  </div>
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
-}
+<script>
+import { NeuralNetwork } from "brain.js";
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
+export default {
+  data() {
+    return {
+      colorName: "",
+      trainingData: [
+        // standard colours
+        { input: { r: 1, g: 0, b: 0 }, output: { red: 1 } },
+        { input: { r: 0, g: 1, b: 0 }, output: { green: 1 } },
+        { input: { r: 0, g: 0, b: 1 }, output: { blue: 1 } },
+        // other colours
+        { input: { r: 1, g: 1, b: 0 }, output: { yellow: 1 } },
+        { input: { r: 1, g: 0, b: 1 }, output: { purple: 1 } },
+        { input: { r: 0, g: 1, b: 1 }, output: { cyan: 1 } },
+        { input: { r: 1, g: 1, b: 1 }, output: { white: 1 } },
+        { input: { r: 0, g: 0, b: 0 }, output: { black: 1 } },
+      ],
+      prediction: "",
+    };
+  },
+  methods: {
+    train() {
+      // Define the neural network
+      this.network = new NeuralNetwork();
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
+      // Train the neural network
+      this.network.train(this.trainingData);
+    },
+    capture() {
+      const rgb = this.getAverageColor();
+      if (this.colorName) {
+        this.trainingData.push({
+          input: {
+            r: rgb.r / 255,
+            g: rgb.g / 255,
+            b: rgb.b / 255,
+          },
+          output: { [this.colorName]: 1 },
+        });
+      }
+    },
+    predictColor() {
+      const rgb = this.getAverageColor();
+      const input = {
+        r: rgb.r / 255,
+        g: rgb.g / 255,
+        b: rgb.b / 255,
+      };
 
-  .logo {
-    margin: 0 2rem 0 0;
-  }
+      if (this.network) {
+        const output = this.network.run(input);
+        this.prediction = Object.keys(output).reduce((a, b) =>
+          output[a] > output[b] ? a : b
+        );
+      }
 
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-}
-</style>
+      requestAnimationFrame(this.predictColor);
+    },
+    getAverageColor() {
+      const video = this.$refs.video;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+      let r = 0;
+      let g = 0;
+      let b = 0;
+
+      for (let i = 0; i < imageData.length; i += 4) {
+        r += imageData[i];
+        g += imageData[i + 1];
+        b += imageData[i + 2];
+      }
+
+      const numPixels = imageData.length / 4;
+      r = Math.floor(r / numPixels);
+      g = Math.floor(g / numPixels);
+      b = Math.floor(b / numPixels);
+
+      return { r, g, b };
+    },
+  },
+  mounted() {
+    this.train()
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: false })
+      .then((stream) => {
+        this.$refs.video.srcObject = stream;
+        this.$refs.video.addEventListener("loadedmetadata", () => {
+          requestAnimationFrame(this.predictColor);
+        });
+      })
+      .catch((error) => {
+        console.error("Error accessing the camera:", error);
+      });
+      // create auto prediction every 100 milliseconds
+      setInterval(() => {
+        this.predictColor();
+      }, 100);
+  },
+};
+</script>
