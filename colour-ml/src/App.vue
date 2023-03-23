@@ -9,6 +9,10 @@
     <button @click="capture">Capture Color</button>
     <button @click="train">Train Neural Network</button>
     <div v-if="prediction">Predicted Color: {{ prediction }}</div>
+    <h2>All</h2>
+    <div v-for="item in list">
+      {{ item[0] }}: {{ item[1] }}
+    </div>
   </div>
 </template>
 
@@ -18,6 +22,7 @@ import { NeuralNetwork } from "brain.js";
 export default {
   data() {
     return {
+      list: null,
       colorName: "",
       trainingData: [
         { input: { r: 1, g: 0, b: 0 }, output: { red: 1 } },
@@ -128,9 +133,14 @@ export default {
 
       if (this.network) {
         const output = this.network.run(input);
+        console.log(output);
         this.prediction = Object.keys(output).reduce((a, b) =>
           output[a] > output[b] ? a : b
         );
+        // sort each item in output and add top 10 to this.list
+        this.list = Object.entries(output)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10);
       }
 
       requestAnimationFrame(this.predictColor);
@@ -176,10 +186,10 @@ export default {
       .catch((error) => {
         console.error("Error accessing the camera:", error);
       });
-      // create auto prediction every 100 milliseconds
+      // create auto prediction every 1000 milliseconds
       setInterval(() => {
         this.predictColor();
-      }, 100);
+      }, 1000);
   },
 };
 </script>
